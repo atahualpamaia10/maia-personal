@@ -472,6 +472,7 @@ async function deleteTx() {
 
 /* ── eventos ── */
 $$('.tab').forEach(b => b.addEventListener('click', () => { ui.view = b.dataset.view; render(); }));
+$('.brand').addEventListener('click', () => { if (!S) return; ui.view = 'ledger'; ui.ym = U.currentYM(); render(); });
 $('#fab').addEventListener('click', () => openTxModal(null));
 
 $('#view').addEventListener('click', async e => {
