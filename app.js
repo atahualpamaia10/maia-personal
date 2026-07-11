@@ -179,6 +179,7 @@ function renderLedger() {
 
 function txRow(t, ym, sel) {
   const locked = isLocked(ym);
+  const cl = t.cleared ? ' cleared' : '';
   const sr = Store.seriesOf(t);
   const parc = sr && sr.kind === 'installment' ? ` <span class="parc">(${t.series_index}/${sr.total})</span>` : '';
   const chk = `<button class="chk num ${t.cleared ? 'on' : ''} ${locked ? 'ro' : ''}" data-chk="${t.id}"
@@ -186,7 +187,7 @@ function txRow(t, ym, sel) {
 
   if (t.type === 'transfer') {
     const line = (meta, sign, amount) => `
-      <div class="tx ${locked ? 'locked' : ''}">
+      <div class="tx ${locked ? 'locked' : ''}${cl}">
         <span class="ico">&#8646;</span>
         <div class="mid" data-edit="${t.id}">
           <div class="desc">${esc(t.description)}${parc}</div>
@@ -206,7 +207,7 @@ function txRow(t, ym, sel) {
   const neg = t.type === 'expense';
   const cat = t.category_id ? esc(catById(t.category_id)?.name ?? '') : 'Sem categoria';
   return `
-    <div class="tx ${locked ? 'locked' : ''}">
+    <div class="tx ${locked ? 'locked' : ''}${cl}">
       <span class="ico">${sr ? '&#8635;' : ''}</span>
       <div class="mid" data-edit="${t.id}">
         <div class="desc">${esc(t.description)}${parc}</div>
@@ -592,6 +593,24 @@ async function boot() {
   if (!session) { authModal.showModal(); return; }
   await start();
 }
+
+/* ── tema: botão (override) + sistema como padrão ── */
+const THEME_KEY = 'cofre.theme';
+const themeBtn = $('#theme');
+const mql = matchMedia('(prefers-color-scheme: dark)');
+const isDark = () => { const p = localStorage.getItem(THEME_KEY); return p ? p === 'dark' : mql.matches; };
+function applyTheme() {
+  const dark = isDark();
+  document.documentElement.classList.toggle('dark', dark);
+  themeBtn.textContent = dark ? '☀' : '☾';
+  themeBtn.title = dark ? 'Tema claro' : 'Tema escuro';
+}
+themeBtn.addEventListener('click', () => {
+  localStorage.setItem(THEME_KEY, isDark() ? 'light' : 'dark');
+  applyTheme();
+});
+mql.addEventListener('change', () => { if (!localStorage.getItem(THEME_KEY)) applyTheme(); });
+applyTheme();
 
 /* ── refresh: pull-to-refresh + voltar pro app ── */
 const anyDialogOpen = () => $$('dialog').some(d => d.open);

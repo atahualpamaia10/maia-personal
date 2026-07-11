@@ -6,6 +6,7 @@
   --muted:     #67736C;
   --line:      #DFE4DF;
   --line-soft: #EAEEE9;
+  --tx-clear:  #E6EAE3;
   --brand:     #0E3B2C;
   --brand-2:   #175C43;
   --pos:       #157A4A;
@@ -61,12 +62,18 @@ input,select{ font:inherit; color:inherit; }
   border-radius:10px 10px 0 0;
 }
 .tab.is-active{ background:var(--bg); color:var(--brand); }
+.top-actions{ display:flex; align-items:center; gap:2px; align-self:center; }
 .logout{
-  align-self:center; color:#BFD4C9; font-size:13px; font-weight:600;
+  color:#BFD4C9; font-size:13px; font-weight:600;
   padding:6px 12px; border-radius:8px;
 }
 .logout:hover{ background:rgba(255,255,255,.12); color:#fff; }
 .logout[hidden]{ display:none; }
+.iconbtn{
+  color:#BFD4C9; font-size:17px; width:36px; height:36px; border-radius:8px;
+  display:grid; place-items:center; line-height:1;
+}
+.iconbtn:hover{ background:rgba(255,255,255,.12); color:#fff; }
 
 /* ── Layout ─────────────────────────────────────────── */
 .wrap{ max-width:860px; margin:0 auto; padding:20px 16px 40px; }
@@ -152,6 +159,7 @@ input,select{ font:inherit; color:inherit; }
   display:flex; align-items:center; gap:10px; padding:9px 16px;
   border-radius:8px;
 }
+.tx.cleared{ background:var(--tx-clear); }
 .tx:hover{ background:var(--line-soft); }
 .tx.locked:hover{ background:none; }
 .tx .ico{ flex:0 0 20px; text-align:center; font-size:13px; color:var(--muted); }
@@ -335,7 +343,7 @@ dialog::backdrop{ background:rgba(14,25,20,.45); }
 @media (max-width:560px){
   .top-inner{ position:relative; flex-direction:column; align-items:stretch; gap:4px; }
   .brand{ padding-bottom:0; }
-  .logout{ position:absolute; top:10px; right:6px; }
+  .top-actions{ position:absolute; top:8px; right:4px; }
   .tabs{ justify-content:space-between; }
   .tab{ flex:1; text-align:center; padding:10px 4px 12px; }
   .month-title{ font-size:28px; min-width:170px; }
@@ -347,34 +355,34 @@ dialog::backdrop{ background:rgba(14,25,20,.45); }
   .tx, .btn, .tab, .chk{ transition:background .12s ease; }
 }
 
-/* ── Dark mode (segue o sistema) ────────────────────── */
-@media (prefers-color-scheme:dark){
-  :root{
-    --bg:#0F1411;
-    --card:#171E1A;
-    --ink:#E7ECE8;
-    --muted:#93A099;
-    --line:#2B342E;
-    --line-soft:#212823;
-    --pos:#46B87E;
-    --neg:#E1745F;
-    --xfer:#86A99B;
-  }
-  /* verdes usados como TEXTO ficam claros pra contrastar no escuro */
-  .month-title, .view-head h1, .sheet-head h2, .pop h3,
-  .seg button.is-active, .month-nav .arrow{ color:#EAF3EE; }
-  .auth-mark{ color:#6FC79A; }
-  .day-head, .month-today, .mini{ color:#7FC2A0; }
-  .mini.danger{ color:var(--neg); }
-  /* aba ativa: superfície elevada, texto claro */
-  .tab.is-active{ background:var(--card); color:#EAF3EE; }
-  /* inputs: fundo escuro no lugar do quase-branco fixo */
-  #txForm input[type="text"], #txForm input[type="date"], #txForm input[type="number"], #txForm select,
-  .pop .fld input, .auth-field input{ background:#0F1411; color:var(--ink); border-color:var(--line); }
-  /* seletor de conta */
-  .acc-chip.sel.on{ border-color:#3FB37A; }
-  .acc-chip.sel.on .chkbox{ background:#2E8B63; border-color:#2E8B63; }
-  .chk{ color:#3A443E; }
-  /* aviso de mês travado */
-  .lock-note{ background:#2A2512; color:#D8C88A; border-color:#3A3218; }
+/* ── Dark mode (classe .dark no <html>, setada pelo botão/sistema) ── */
+html.dark{
+  --bg:#0F1411;
+  --card:#171E1A;
+  --ink:#E7ECE8;
+  --muted:#93A099;
+  --line:#2B342E;
+  --line-soft:#212823;
+  --tx-clear:#0F1512;
+  --pos:#46B87E;
+  --neg:#E1745F;
+  --xfer:#86A99B;
 }
+/* verdes usados como TEXTO ficam claros pra contrastar no escuro */
+html.dark .month-title, html.dark .view-head h1, html.dark .sheet-head h2, html.dark .pop h3,
+html.dark .seg button.is-active, html.dark .month-nav .arrow{ color:#EAF3EE; }
+html.dark .auth-mark{ color:#6FC79A; }
+html.dark .day-head, html.dark .month-today, html.dark .mini{ color:#7FC2A0; }
+html.dark .mini.danger{ color:var(--neg); }
+/* aba ativa: superfície elevada, texto claro */
+html.dark .tab.is-active{ background:var(--card); color:#EAF3EE; }
+/* inputs: fundo escuro no lugar do quase-branco fixo */
+html.dark #txForm input[type="text"], html.dark #txForm input[type="date"],
+html.dark #txForm input[type="number"], html.dark #txForm select,
+html.dark .pop .fld input, html.dark .auth-field input{ background:#0F1411; color:var(--ink); border-color:var(--line); }
+/* seletor de conta */
+html.dark .acc-chip.sel.on{ border-color:#3FB37A; }
+html.dark .acc-chip.sel.on .chkbox{ background:#2E8B63; border-color:#2E8B63; }
+html.dark .chk{ color:#3A443E; }
+/* aviso de mês travado */
+html.dark .lock-note{ background:#2A2512; color:#D8C88A; border-color:#3A3218; }
