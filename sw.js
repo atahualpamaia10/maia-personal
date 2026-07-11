@@ -2,7 +2,7 @@
    Cacheia o app (shell) pra abrir offline e rápido.
    Chamadas ao Supabase (dados/login) nunca são cacheadas. */
 
-const CACHE = 'maiaeconomias-v1';
+const CACHE = 'maiaeconomias-v2';
 const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const LOCAL = [
   './', 'index.html', 'style.css',
