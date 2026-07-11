@@ -103,7 +103,21 @@ const Store = (() => {
     if (prefs.carry === undefined) prefs.carry = true;
     state = { accounts, categories, series, transactions, prefs };
     await ensureRecurringHorizon();
+    await seedDefaultsIfNeeded();
     return state;
+  }
+
+  /* categorias padrão: cria uma vez, se a conta ainda não tem nenhuma */
+  const DEFAULT_CATEGORIES = ['Moradia', 'Mercado', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Assinaturas', 'Salário', 'Outros'];
+  async function seedDefaultsIfNeeded() {
+    if (state.prefs.seeded) return;
+    if (state.categories.length === 0) {
+      const rows = DEFAULT_CATEGORIES.map(name => ({ id: uid(), name, archived: false }));
+      state.categories.push(...rows);
+      await q(sb.from('categories').insert(rows));
+    }
+    state.prefs.seeded = true;
+    await q(sb.from('prefs').upsert({ key: 'seeded', value: true, user_id: userId }, { onConflict: 'user_id,key' }));
   }
 
   /* ── séries indefinidas: garantir linhas até o horizonte ── */

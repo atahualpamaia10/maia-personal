@@ -5,7 +5,7 @@ const U = Store.util;
 
 const ui = {
   ym: /^#\d{4}-\d{2}$/.test(location.hash) ? location.hash.slice(1) : U.currentYM(),
-  view: 'ledger',
+  view: 'home',
   editingId: null,   // id da transação em edição (null = nova)
   formType: 'expense',
 };
@@ -93,10 +93,134 @@ const isLocked = ym => ym < U.currentYM();
 function render() {
   $$('.tab').forEach(b => b.classList.toggle('is-active', b.dataset.view === ui.view));
   const v = $('#view');
+  if (ui.view === 'home') v.innerHTML = renderHome();
   if (ui.view === 'ledger') v.innerHTML = renderLedger();
   if (ui.view === 'accounts') v.innerHTML = renderAccounts();
   if (ui.view === 'categories') v.innerHTML = renderCategories();
-  $('#fab').hidden = !(ui.view === 'ledger' && !isLocked(ui.ym));
+  $('#fab').hidden = !((ui.view === 'home' || ui.view === 'ledger') && !isLocked(ui.ym));
+}
+
+/* ── pedaços compartilhados (home + ledger) ── */
+function monthNavHTML() {
+  const { name, year } = ymLabel(ui.ym);
+  return `
+    <section class="month-nav">
+      <button class="arrow" data-nav="-1" aria-label="Mês anterior">&#9664;</button>
+      <div class="month-title">${name}<small>${year}</small></div>
+      <button class="arrow" data-nav="1" aria-label="Próximo mês">&#9654;</button>
+    </section>
+    ${ui.ym !== U.currentYM() ? `<button class="month-today" data-today>voltar pro mês atual</button>` : ''}`;
+}
+function accStripHTML(sel) {
+  return `<div class="acc-strip">
+    ${S.accounts.map(a => {
+      const on = sel.has(a.id);
+      const b = accountBalance(a.id);
+      return `<button class="acc-chip sel ${on ? 'on' : ''}" data-accsel="${a.id}">
+        <span class="chkbox">${on ? '&#10003;' : ''}</span>
+        <span class="acc-txt"><span class="n">${esc(a.name)}</span>
+        <span class="v num ${b < 0 ? 'neg' : ''}">${brl(b)}</span></span>
+      </button>`;
+    }).join('') || '<div class="empty">Nenhuma conta. Crie uma na aba Contas.</div>'}
+  </div>`;
+}
+function parcLabel(t) {
+  const sr = Store.seriesOf(t);
+  return sr && sr.kind === 'installment' ? ` <span class="parc">(${t.series_index}/${sr.total})</span>` : '';
+}
+
+/* ── view: Início (dashboard) ── */
+function renderHome() {
+  const ym = ui.ym;
+  const sel = selectedAccounts();
+  const carryOn = S.prefs.carry;
+  const carry = carryBefore(ym, sel);
+
+  let entradas = 0, saidas = 0;
+  for (const t of monthTxs(ym)) {
+    if (t.type === 'income' && sel.has(t.account_id)) entradas += t.amount;
+    else if (t.type === 'expense' && sel.has(t.account_id)) saidas += t.amount;
+    else if (t.type === 'transfer') {
+      if (sel.has(t.account_to)) entradas += t.amount;
+      if (sel.has(t.account_id)) saidas += t.amount;
+    }
+  }
+  const resultado = (carryOn ? carry : 0) + entradas - saidas;
+
+  // despesas por categoria
+  const byCat = new Map();
+  let despTotal = 0;
+  for (const t of monthTxs(ym)) {
+    if (t.type === 'expense' && sel.has(t.account_id)) {
+      const k = t.category_id || '__none';
+      byCat.set(k, (byCat.get(k) || 0) + t.amount);
+      despTotal += t.amount;
+    }
+  }
+  const cats = [...byCat.entries()].sort((a, b) => b[1] - a[1]);
+  const PALETTE = ['#8A1C1C', '#5A2A82', '#C9A227', '#2E8B63', '#1F6F8B', '#B5651D', '#9C3848', '#7A7A2E', '#3E5A50', '#67736C'];
+  let accDeg = 0;
+  const segs = cats.map(([, v], i) => {
+    const s = despTotal ? accDeg / despTotal * 360 : 0;
+    accDeg += v;
+    const e = despTotal ? accDeg / despTotal * 360 : 0;
+    return `${PALETTE[i % PALETTE.length]} ${s}deg ${e}deg`;
+  }).join(', ');
+  const catName = k => k === '__none' ? 'Sem categoria' : (catById(k)?.name ?? '—');
+
+  // a consolidar
+  const today = U.todayStr();
+  const pend = S.transactions.filter(t => !t.cleared && touches(t, sel));
+  const atrasadas = pend.filter(t => t.date <= today).sort((a, b) => a.date < b.date ? -1 : 1);
+  const proximas = pend.filter(t => t.date > today).sort((a, b) => a.date < b.date ? -1 : 1);
+  const LIMIT = 12;
+  const pendRow = t => {
+    const v = signedSel(t, sel);
+    const mag = Math.abs(v) || t.amount;
+    const cls = v < 0 ? 'neg' : v > 0 ? 'pos' : 'xf';
+    const sign = v < 0 ? '&minus;' : v > 0 ? '+' : '';
+    return `<div class="hrow">
+      <button class="chk num" data-chk="${t.id}" title="Consolidar">&#10003;&#10003;</button>
+      <div class="mid" data-edit="${t.id}">
+        <div class="desc">${esc(t.description)}${parcLabel(t)}</div>
+        <div class="meta">${dmy(t.date)}</div>
+      </div>
+      <span class="amt num ${cls}">${sign}&nbsp;${fmt(mag)}</span>
+    </div>`;
+  };
+  const pendBlock = (title, list) => list.length ? `<div class="hgroup">${title}</div>${list.slice(0, LIMIT).map(pendRow).join('')}${list.length > LIMIT ? `<div class="hmore">+${list.length - LIMIT} mais</div>` : ''}` : '';
+
+  return `
+    ${monthNavHTML()}
+    ${accStripHTML(sel)}
+
+    <div class="card sum">
+      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> incluir saldo anterior</label>
+      ${carryOn ? `<div class="sum-line"><span>Saldo anterior</span><span class="num ${carry < 0 ? 'neg' : ''}">${brl(carry)}</span></div>` : ''}
+      <div class="sum-line"><span>Entradas</span><span class="num pos">${brl(entradas)}</span></div>
+      <div class="sum-line"><span>Saídas</span><span class="num neg">&minus;&nbsp;${brl(saidas)}</span></div>
+      <div class="sum-total"><span>Resultado</span><span class="num ${resultado < 0 ? 'neg' : ''}">${brl(resultado)}</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-h">Despesas por categoria</div>
+      ${despTotal === 0 ? `<div class="empty">Sem despesas em ${ymLabel(ym).name}.</div>` : `
+        <div class="donut-wrap">
+          <div class="donut" style="background:conic-gradient(${segs})"><div class="donut-hole"><span class="num">${brl(despTotal)}</span><small>total</small></div></div>
+          <div class="legend">
+            ${cats.map(([k, v], i) => `<div class="leg"><span class="dot" style="background:${PALETTE[i % PALETTE.length]}"></span>
+              <span class="leg-n">${esc(catName(k))}</span>
+              <span class="leg-v num">${brl(v)} · ${Math.round(v / despTotal * 100)}%</span></div>`).join('')}
+          </div>
+        </div>`}
+    </div>
+
+    <div class="card">
+      <div class="card-h">A consolidar</div>
+      ${(atrasadas.length || proximas.length) ? '' : `<div class="empty">Tudo consolidado.</div>`}
+      ${pendBlock('Atrasadas', atrasadas)}
+      ${pendBlock('Próximas', proximas)}
+    </div>`;
 }
 
 /* ── view: transações ── */
@@ -137,24 +261,8 @@ function renderLedger() {
   const monthResult = carryOn ? carry + net : net;
 
   return `
-    <section class="month-nav">
-      <button class="arrow" data-nav="-1" aria-label="Mês anterior">&#9664;</button>
-      <div class="month-title">${name}<small>${year}</small></div>
-      <button class="arrow" data-nav="1" aria-label="Próximo mês">&#9654;</button>
-    </section>
-    ${ym !== U.currentYM() ? `<button class="month-today" data-today>voltar pro mês atual</button>` : ''}
-
-    <div class="acc-strip">
-      ${S.accounts.map(a => {
-        const on = sel.has(a.id);
-        const b = accountBalance(a.id);
-        return `<button class="acc-chip sel ${on ? 'on' : ''}" data-accsel="${a.id}">
-          <span class="chkbox">${on ? '&#10003;' : ''}</span>
-          <span class="acc-txt"><span class="n">${esc(a.name)}</span>
-          <span class="v num ${b < 0 ? 'neg' : ''}">${brl(b)}</span></span>
-        </button>`;
-      }).join('') || '<div class="empty">Nenhuma conta. Crie uma na aba Contas.</div>'}
-    </div>
+    ${monthNavHTML()}
+    ${accStripHTML(sel)}
 
     <div class="card carry">
       <div>
@@ -472,7 +580,7 @@ async function deleteTx() {
 
 /* ── eventos ── */
 $$('.tab').forEach(b => b.addEventListener('click', () => { ui.view = b.dataset.view; render(); }));
-$('.brand').addEventListener('click', () => { if (!S) return; ui.view = 'ledger'; ui.ym = U.currentYM(); render(); });
+$('.brand').addEventListener('click', () => { if (!S) return; ui.view = 'home'; ui.ym = U.currentYM(); render(); });
 $('#fab').addEventListener('click', () => openTxModal(null));
 
 $('#view').addEventListener('click', async e => {
