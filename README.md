@@ -1,41 +1,62 @@
-# Cofre
+# maiaeconomias
 
-App de finanças pessoais do Maia, no estilo Minhas Economias. HTML/JS estático, sem build step.
+App de finanças pessoais do Maia, estilo Minhas Economias. HTML/JS estático, sem build step. Dado no Supabase, sincroniza cel/PC. Instalável como app (PWA).
 
-## Rodar
+**No ar:** https://atahualpamaia10.github.io/maia-personal/
 
-Abrir `index.html` no browser. Só isso.
+## Como funciona
 
-## Estado atual (v1 local)
-
-- Dado salvo em **localStorage** (só neste aparelho). A migração pra Supabase acontece em `store.js`, que isola toda a camada de dados.
-- Primeiro load cria dado de exemplo (seed em `store.js`). Pra zerar: DevTools → Application → Local Storage → apagar a chave `cofre.v1`.
+- **Frontend**: HTML/CSS/JS puro, servido pelo GitHub Pages. Sem framework, sem build.
+- **Backend**: Supabase (Postgres + Auth). Toda a camada de dados fica isolada no `store.js`.
+- **Login**: Supabase Auth (email + senha), 1 usuário. A RLS só libera acesso a quem está logado, então a publishable key exposta no browser não lê nem escreve nada sem sessão.
+- **Sync**: escrita otimista (atualiza a tela na hora, empurra pro Supabase em background; se falhar, avisa e recarrega). Puxar pra baixo ou voltar pro app recarrega do servidor.
+- **PWA**: `manifest.webmanifest` + `sw.js` (service worker network-first: sempre pega a versão nova online, cache só como fallback offline).
+- Valores monetários sempre em **centavos** (inteiros).
 
 ## Arquivos
 
-- `index.html` - shell + modais (form de transação, dialog de escopo)
-- `style.css` - visual (tokens no `:root`)
-- `store.js` - camada de dados: CRUD, séries (parcelamento/recorrente), persistência. Valores em **centavos**.
-- `app.js` - UI: render das 3 views (Transações/Contas/Categorias), saldos, eventos
+- `index.html` — shell + modais (transação, escopo de série, conta, prompt, confirmação, login)
+- `style.css` — visual, tokens no `:root`, tema verde/dourado, dark mode automático
+- `config.js` — URL + publishable key do Supabase (pública por design; vai pro repo)
+- `store.js` — camada de dados: auth, CRUD, séries, sync com Supabase
+- `app.js` — UI: 3 views (Transações/Contas/Categorias), saldos, eventos, pull-to-refresh
+- `schema.sql` — schema do banco (tabelas + RLS) pra colar no SQL Editor do Supabase
+- `manifest.webmanifest`, `sw.js`, `icon.svg`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` — PWA
+- `.env` — credenciais locais (gitignored, não sobe)
+- `test-store.js` — **obsoleto**: testava a lógica em localStorage no Node. Não roda mais (o store agora depende do SDK do Supabase no browser).
 
 ## Regras de negócio
 
-- **Tipos**: despesa, receita, transferência (origem → destino, efeito zero no total geral).
+- **Tipos**: despesa, receita, transferência.
+- **Seletor de conta**: no topo da aba Transações, cada conta é um chip com checkbox. Tudo (lista, saldo do dia, saldo do mês anterior, resultado do mês) filtra pelas contas marcadas. Marca várias = soma. Sem card de "total geral".
+- **Transferência**: aparece só a perna da conta em vista — débito (−) na origem, crédito (+) no destino. Marcando as duas contas, aparecem as duas linhas (efeito zero no saldo somado).
 - **Parcelamento mensal (N)**: cria N linhas, uma por mês, rótulo (k/N). Dia clampado (31 → 30/28).
-- **Recorrente indefinido**: materializa linhas até mês atual + 24; estende sozinho a cada load (`ensureRecurringHorizon`).
-- **Cada linha é individual no seu mês.** Editar/excluir linha de série pergunta: "Só esta" ou "Esta e as futuras". Futuras: propaga valores; a data propaga só o dia do mês; `consolidada` nunca propaga.
-- **Mês anterior ao atual = somente leitura** (sem editar, criar ou consolidar).
-- **Saldo do dia** = saldo anterior (se o toggle estiver ligado) + acumulado do mês até o dia.
-- **Fim do mês**: resultado do mês (receitas − despesas) + saldo acumulado (carry + resultado, sempre exibido).
-- **Saldo atual por conta** = saldo inicial + transações com data ≤ hoje.
-- Deep-link de mês via hash: `index.html#2026-10`.
+- **Recorrente indefinido**: materializa linhas até mês atual + 24; estende sozinho a cada load.
+- **Cada linha é individual no seu mês.** Editar/excluir linha de série pergunta: "Só esta" ou "Esta e as futuras".
+- **Mês anterior ao atual = somente leitura.**
+- **Saldo atual da conta** = saldo inicial + transações com data ≤ hoje.
+- **Fim do mês**: resultado (receitas − despesas das contas marcadas) + saldo acumulado.
+- Deep-link de mês via hash: `#2026-10`.
 
-## Testes
+## Operar
 
-`test-store.js` (harness Node da lógica do store) roda com `node test-store.js`. 14 checks: parcelas, horizonte, clamp de dia, edição/exclusão forward, encadeamento de saldo.
+### Mexer no app e publicar
+Edita os arquivos e dá push. O GitHub Pages atualiza sozinho em ~1-2 min:
+```
+git add -A && git commit -m "..." && git push
+```
+Se mudar CSS/JS, subir a versão do cache no `sw.js` (`CACHE = 'maiaeconomias-vN'`) ajuda a forçar a troca.
 
-## Próximos passos
+### Supabase
+- Painel → SQL Editor pra rodar/alterar schema (`schema.sql`).
+- Painel → Authentication → Users pra o usuário do login.
+- Chaves: Project Settings → API Keys. A publishable fica no `config.js`; a secret só no `.env` local (tarefas administrativas), nunca no repo.
 
-1. Supabase (schema + sync no `store.js`) - esperando conta
-2. Senha simples na entrada
-3. Deploy GitHub Pages + PWA (manifest, ícone, instalar na home do cel)
+### Instalar no cel
+Abrir a URL no Safari/Chrome → compartilhar/menu → "Adicionar à Tela de Início". Login uma vez; a sessão fica salva.
+
+## Pendências / notas
+
+- No `.env`, a linha `SUPABASE_SECRET_KEY` ainda está com a publishable duplicada. Só é usada em tarefa administrativa local; corrigir pra `sb_secret_...` quando precisar.
+- Seleção de contas não persiste entre reloads (volta pra todas). Fácil de guardar depois, se quiser.
+- Autofill de senha no iOS: salvar primeiro via Safari (navegador); o app instalado passa a sugerir do Keychain.
