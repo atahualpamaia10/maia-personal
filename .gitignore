@@ -1,0 +1,9 @@
+.env
+.DS_Store
+config.local.js
+node_modules/
+*.png
+# exceções: ícones do PWA precisam subir
+!icon-192.png
+!icon-512.png
+!apple-touch-icon.png
