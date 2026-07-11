@@ -2,7 +2,7 @@
    Cacheia o app (shell) pra abrir offline e rápido.
    Chamadas ao Supabase (dados/login) nunca são cacheadas. */
 
-const CACHE = 'maiaeconomias-v3';
+const CACHE = 'maiaeconomias-v4';
 const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const LOCAL = [
   './', 'index.html', 'style.css',
@@ -32,11 +32,22 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;            // escrita (POST/PATCH) sempre rede
   if (url.hostname.endsWith('supabase.co')) return;  // dados e login sempre rede
+
+  // SDK do CDN: imutável, cache-first
+  if (url.hostname.endsWith('jsdelivr.net')) {
+    e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+      const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res;
+    })));
+    return;
+  }
+
+  // app (mesmo domínio): network-first, cache só como fallback offline.
+  // Garante que a versão nova aparece assim que estiver online.
   e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+    fetch(e.request).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy));
       return res;
-    }).catch(() => caches.match('index.html')))
+    }).catch(() => caches.match(e.request).then(hit => hit || caches.match('index.html')))
   );
 });
