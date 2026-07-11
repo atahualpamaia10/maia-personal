@@ -8,6 +8,7 @@ const ui = {
   view: 'home',
   editingId: null,   // id da transação em edição (null = nova)
   formType: 'expense',
+  expand: { atrasadas: false, proximas: false },
 };
 
 /* ── helpers ── */
@@ -173,14 +174,14 @@ function renderHome() {
   const pend = S.transactions.filter(t => !t.cleared && touches(t, sel));
   const atrasadas = pend.filter(t => t.date <= today).sort((a, b) => a.date < b.date ? -1 : 1);
   const proximas = pend.filter(t => t.date > today).sort((a, b) => a.date < b.date ? -1 : 1);
-  const LIMIT = 12;
-  const pendRow = t => {
+  const LIMIT = 5;
+  const homeRow = t => {
     const v = signedSel(t, sel);
     const mag = Math.abs(v) || t.amount;
     const cls = v < 0 ? 'neg' : v > 0 ? 'pos' : 'xf';
     const sign = v < 0 ? '&minus;' : v > 0 ? '+' : '';
     return `<div class="hrow">
-      <button class="chk num" data-chk="${t.id}" title="Consolidar">&#10003;&#10003;</button>
+      <button class="chk num ${t.cleared ? 'on' : ''}" data-chk="${t.id}" title="${t.cleared ? 'Consolidada' : 'Consolidar'}">&#10003;&#10003;</button>
       <div class="mid" data-edit="${t.id}">
         <div class="desc">${esc(t.description)}${parcLabel(t)}</div>
         <div class="meta">${dmy(t.date)}</div>
@@ -188,7 +189,20 @@ function renderHome() {
       <span class="amt num ${cls}">${sign}&nbsp;${fmt(mag)}</span>
     </div>`;
   };
-  const pendBlock = (title, list) => list.length ? `<div class="hgroup">${title}</div>${list.slice(0, LIMIT).map(pendRow).join('')}${list.length > LIMIT ? `<div class="hmore">+${list.length - LIMIT} mais</div>` : ''}` : '';
+  const pendBlock = (title, list, key) => {
+    if (!list.length) return '';
+    const expanded = ui.expand[key];
+    const shown = expanded ? list : list.slice(0, LIMIT);
+    const more = list.length > LIMIT
+      ? `<button class="hmore" data-expand="${key}">${expanded ? 'mostrar menos' : `mostrar mais (+${list.length - LIMIT})`}</button>` : '';
+    return `<div class="hgroup">${title}</div>${shown.map(homeRow).join('')}${more}`;
+  };
+
+  // últimas transações (mais recentes por criação; sessão-novas primeiro)
+  const rKey = t => t.created_at || '￿';
+  const recentes = S.transactions.filter(t => touches(t, sel))
+    .sort((a, b) => rKey(b) < rKey(a) ? -1 : rKey(b) > rKey(a) ? 1 : 0)
+    .slice(0, 5);
 
   return `
     ${monthNavHTML()}
@@ -218,8 +232,13 @@ function renderHome() {
     <div class="card">
       <div class="card-h">A consolidar</div>
       ${(atrasadas.length || proximas.length) ? '' : `<div class="empty">Tudo consolidado.</div>`}
-      ${pendBlock('Atrasadas', atrasadas)}
-      ${pendBlock('Próximas', proximas)}
+      ${pendBlock('Atrasadas', atrasadas, 'atrasadas')}
+      ${pendBlock('Próximas', proximas, 'proximas')}
+    </div>
+
+    <div class="card">
+      <div class="card-h">Últimas transações</div>
+      ${recentes.length ? recentes.map(homeRow).join('') : `<div class="empty">Nenhuma transação ainda.</div>`}
     </div>`;
 }
 
@@ -595,6 +614,9 @@ $('#view').addEventListener('click', async e => {
     sel.has(id) ? sel.delete(id) : sel.add(id);
     render(); return;
   }
+
+  const exp = e.target.closest('[data-expand]');
+  if (exp) { const k = exp.dataset.expand; ui.expand[k] = !ui.expand[k]; render(); return; }
 
   const chk = e.target.closest('[data-chk]');
   if (chk && !chk.classList.contains('ro')) {
