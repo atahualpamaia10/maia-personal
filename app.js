@@ -78,10 +78,10 @@ function accountBalance(accId) {
   for (const t of S.transactions) if (t.date <= today) v += signedForAccount(t, accId);
   return v;
 }
-// contas selecionadas (default: todas); descarta ids que sumiram
+// contas selecionadas (default: só a principal = primeira criada); descarta ids que sumiram
 function selectedAccounts() {
   const ids = S.accounts.map(a => a.id);
-  if (!ui.accSel) ui.accSel = new Set(ids);
+  if (!ui.accSel) ui.accSel = new Set(ids.slice(0, 1));
   else for (const id of [...ui.accSel]) if (!ids.includes(id)) ui.accSel.delete(id);
   return ui.accSel;
 }
@@ -271,12 +271,18 @@ function setFormType(type) {
   $('#accLabel').textContent = type === 'transfer' ? 'Conta origem' : 'Conta';
 }
 
+function fillCategorySelect(selectedId) {
+  txForm.category.innerHTML = '<option value="">Sem categoria</option>' +
+    S.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('') +
+    '<option value="__new__">+ Nova categoria…</option>';
+  txForm.category.value = selectedId ?? '';
+}
+
 function fillSelects() {
   const accs = S.accounts.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('');
   txForm.account.innerHTML = accs;
   txForm.accountTo.innerHTML = accs;
-  txForm.category.innerHTML = '<option value="">Sem categoria</option>' +
-    S.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  fillCategorySelect('');
 }
 
 function openTxModal(txId) {
@@ -321,7 +327,7 @@ function readForm() {
   return {
     type, date, amount,
     description: txForm.description.value.trim() || 'Sem descrição',
-    category_id: type === 'transfer' ? null : (txForm.category.value || null),
+    category_id: type === 'transfer' ? null : (txForm.category.value && txForm.category.value !== '__new__' ? txForm.category.value : null),
     account_id, account_to,
     cleared: txForm.cleared.checked,
   };
@@ -546,9 +552,14 @@ $('#view').addEventListener('change', e => {
 
 // modal
 $$('#typeSeg button').forEach(b => b.addEventListener('click', () => setFormType(b.dataset.type)));
-txForm.addEventListener('change', e => {
+txForm.addEventListener('change', async e => {
   if (e.target.name === 'repeat')
     txForm.querySelector('[data-f="nparc"]').style.display = e.target.value === 'installment' ? '' : 'none';
+  if (e.target.name === 'category' && e.target.value === '__new__') {
+    const name = await askPrompt({ title: 'Nova categoria', label: 'Nome' });
+    if (name) { const c = Store.addCategory(name); fillCategorySelect(c.id); }
+    else fillCategorySelect('');
+  }
 });
 txForm.addEventListener('submit', e => { e.preventDefault(); saveTx(); });
 $('#txDelete').addEventListener('click', deleteTx);

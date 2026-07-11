@@ -82,8 +82,8 @@ const Store = (() => {
     for (let attempt = 0; ; attempt++) {
       try {
         batch = await Promise.all([
-          q(sb.from('accounts').select('*')),
-          q(sb.from('categories').select('*')),
+          q(sb.from('accounts').select('*').order('created_at')),
+          q(sb.from('categories').select('*').order('created_at')),
           q(sb.from('series').select('*')),
           q(sb.from('transactions').select('*')),
           q(sb.from('prefs').select('*')),
