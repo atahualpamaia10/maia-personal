@@ -134,7 +134,7 @@ function renderLedger() {
       </div>`;
   }
 
-  const endBalance = carry + net;
+  const monthResult = carryOn ? carry + net : net;
 
   return `
     <section class="month-nav">
@@ -173,9 +173,7 @@ function renderLedger() {
 
     <div class="card month-end">
       <div class="row"><span class="l">Resultado do mês (receitas &minus; despesas)</span>
-        <span class="v num ${net < 0 ? 'neg' : ''}">${brl(net)}</span></div>
-      <div class="row"><span class="l">Saldo no fim do mês (acumulado)</span>
-        <span class="v num ${endBalance < 0 ? 'neg' : ''}">${brl(endBalance)}</span></div>
+        <span class="v num ${monthResult < 0 ? 'neg' : ''}">${brl(monthResult)}</span></div>
     </div>`;
 }
 
