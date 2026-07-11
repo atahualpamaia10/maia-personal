@@ -8,7 +8,7 @@ App de finanças pessoais do Maia, estilo Minhas Economias. HTML/JS estático, s
 
 - **Frontend**: HTML/CSS/JS puro, servido pelo GitHub Pages. Sem framework, sem build.
 - **Backend**: Supabase (Postgres + Auth). Toda a camada de dados fica isolada no `store.js`.
-- **Login**: Supabase Auth (email + senha), 1 usuário. A RLS só libera acesso a quem está logado, então a publishable key exposta no browser não lê nem escreve nada sem sessão.
+- **Login**: Supabase Auth (email + senha), **multiusuário**. Cada usuário só vê os próprios dados (RLS por `user_id`). A publishable key exposta no browser não lê nem escreve nada sem sessão. Novo usuário = espaço vazio e isolado.
 - **Sync**: escrita otimista (atualiza a tela na hora, empurra pro Supabase em background; se falhar, avisa e recarrega). Puxar pra baixo ou voltar pro app recarrega do servidor.
 - **PWA**: `manifest.webmanifest` + `sw.js` (service worker network-first: sempre pega a versão nova online, cache só como fallback offline).
 - Valores monetários sempre em **centavos** (inteiros).
@@ -20,7 +20,8 @@ App de finanças pessoais do Maia, estilo Minhas Economias. HTML/JS estático, s
 - `config.js` — URL + publishable key do Supabase (pública por design; vai pro repo)
 - `store.js` — camada de dados: auth, CRUD, séries, sync com Supabase
 - `app.js` — UI: 3 views (Transações/Contas/Categorias), saldos, eventos, pull-to-refresh
-- `schema.sql` — schema do banco (tabelas + RLS) pra colar no SQL Editor do Supabase
+- `schema.sql` — schema inicial do banco (tabelas + RLS)
+- `migration-multiuser.sql` — migração que separou o dado por usuário (`user_id` + RLS por dono); já aplicada
 - `manifest.webmanifest`, `sw.js`, `icon.svg`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` — PWA
 - `.env` — credenciais locais (gitignored, não sobe)
 - `test-store.js` — **obsoleto**: testava a lógica em localStorage no Node. Não roda mais (o store agora depende do SDK do Supabase no browser).
