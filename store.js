@@ -12,6 +12,7 @@ const Store = (() => {
   const sb = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
 
   let state = null;
+  let userId = null;   // id do usuário logado (pra prefs por usuário)
 
   /* ── datas util ── */
   const pad = n => String(n).padStart(2, '0');
@@ -78,6 +79,8 @@ const Store = (() => {
   const isClockErr = e => /future|issued at|jwt/i.test(e?.message || '');
 
   async function load() {
+    const { data: { session } } = await sb.auth.getSession();
+    userId = session?.user?.id ?? null;
     let batch;
     for (let attempt = 0; ; attempt++) {
       try {
@@ -249,7 +252,7 @@ const Store = (() => {
 
   function setPref(key, val) {
     state.prefs[key] = val;
-    push(() => q(sb.from('prefs').upsert({ key, value: val })));
+    push(() => q(sb.from('prefs').upsert({ key, value: val, user_id: userId }, { onConflict: 'user_id,key' })));
   }
 
   function seriesOf(tx) { return state.series.find(s => s.id === tx.series_id) || null; }
