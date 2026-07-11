@@ -30,6 +30,20 @@ input,select{ font:inherit; color:inherit; }
 
 .num{ font-variant-numeric:tabular-nums; }
 
+/* ── Pull-to-refresh ────────────────────────────────── */
+.ptr{
+  position:fixed; top:0; left:0; right:0; height:0; overflow:hidden; z-index:45;
+  background:var(--brand); color:#EAF3EE; transition:height .2s ease;
+  display:flex; align-items:flex-end; justify-content:center; padding-bottom:8px;
+}
+.ptr-ico{
+  width:20px; height:20px; border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.35); border-top-color:#EAF3EE;
+}
+.ptr.ready .ptr-ico{ border-top-color:var(--gold); }
+.ptr.loading .ptr-ico{ animation:ptr-spin .7s linear infinite; }
+@keyframes ptr-spin{ to{ transform:rotate(360deg); } }
+
 /* ── Header ─────────────────────────────────────────── */
 .top{ background:var(--brand); color:#EAF3EE; padding-top:env(safe-area-inset-top); }
 .top-inner{
@@ -331,4 +345,36 @@ dialog::backdrop{ background:rgba(14,25,20,.45); }
 
 @media (prefers-reduced-motion:no-preference){
   .tx, .btn, .tab, .chk{ transition:background .12s ease; }
+}
+
+/* ── Dark mode (segue o sistema) ────────────────────── */
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0F1411;
+    --card:#171E1A;
+    --ink:#E7ECE8;
+    --muted:#93A099;
+    --line:#2B342E;
+    --line-soft:#212823;
+    --pos:#46B87E;
+    --neg:#E1745F;
+    --xfer:#86A99B;
+  }
+  /* verdes usados como TEXTO ficam claros pra contrastar no escuro */
+  .month-title, .view-head h1, .sheet-head h2, .pop h3,
+  .seg button.is-active, .month-nav .arrow{ color:#EAF3EE; }
+  .auth-mark{ color:#6FC79A; }
+  .day-head, .month-today, .mini{ color:#7FC2A0; }
+  .mini.danger{ color:var(--neg); }
+  /* aba ativa: superfície elevada, texto claro */
+  .tab.is-active{ background:var(--card); color:#EAF3EE; }
+  /* inputs: fundo escuro no lugar do quase-branco fixo */
+  #txForm input[type="text"], #txForm input[type="date"], #txForm input[type="number"], #txForm select,
+  .pop .fld input, .auth-field input{ background:#0F1411; color:var(--ink); border-color:var(--line); }
+  /* seletor de conta */
+  .acc-chip.sel.on{ border-color:#3FB37A; }
+  .acc-chip.sel.on .chkbox{ background:#2E8B63; border-color:#2E8B63; }
+  .chk{ color:#3A443E; }
+  /* aviso de mês travado */
+  .lock-note{ background:#2A2512; color:#D8C88A; border-color:#3A3218; }
 }

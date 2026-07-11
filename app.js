@@ -595,4 +595,50 @@ async function boot() {
   await start();
 }
 
+/* ── refresh: pull-to-refresh + voltar pro app ── */
+const anyDialogOpen = () => $$('dialog').some(d => d.open);
+
+async function refreshData() {
+  if (!S || anyDialogOpen()) return;
+  try { S = await Store.load(); render(); } catch (_) {}
+}
+
+const ptr = $('#ptr');
+let ptrStartY = null, ptrActive = false;
+
+addEventListener('touchstart', e => {
+  ptrActive = window.scrollY <= 0 && e.touches.length === 1 && !anyDialogOpen();
+  if (ptrActive) { ptrStartY = e.touches[0].clientY; ptr.style.transition = 'none'; }
+}, { passive: true });
+
+addEventListener('touchmove', e => {
+  if (!ptrActive) return;
+  const dy = e.touches[0].clientY - ptrStartY;
+  if (dy > 0 && window.scrollY <= 0) {
+    const pull = Math.min(dy * 0.5, 90);
+    ptr.style.height = pull + 'px';
+    ptr.classList.toggle('ready', pull >= 40);
+  } else {
+    ptr.style.height = '0px'; ptr.classList.remove('ready');
+  }
+}, { passive: true });
+
+addEventListener('touchend', async () => {
+  if (!ptrActive) return;
+  ptrActive = false;
+  const ready = ptr.classList.contains('ready');
+  ptr.style.transition = '';
+  ptr.classList.remove('ready');
+  if (ready) {
+    ptr.classList.add('loading'); ptr.style.height = '64px';
+    await refreshData();
+    ptr.classList.remove('loading');
+  }
+  ptr.style.height = '0px';
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshData();
+});
+
 boot();
