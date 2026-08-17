@@ -66,17 +66,12 @@ function signedSel(t, sel) {
 // a transação toca alguma conta selecionada?
 const touches = (t, sel) => sel.has(t.account_id) || (t.type === 'transfer' && sel.has(t.account_to));
 
-// o que vem do mês anterior: o Resultado do mês dele, do jeito que aparece na tela dele.
-// com o botão ligado esse resultado já trazia os meses de trás, então aqui vale o mesmo.
-// nunca entra o saldo inicial da conta.
+// o que vem do mês anterior: receitas menos despesas SÓ do mês imediatamente anterior.
+// nunca encadeia meses de trás, nunca entra o saldo inicial da conta.
 function prevMonthResult(ym, sel) {
   const prev = U.addMonthsYM(ym, -1);
-  const carryOn = S.prefs.carry;
   let v = 0;
-  for (const t of S.transactions) {
-    const tym = U.ymOf(t.date);
-    if (carryOn ? tym < ym : tym === prev) v += signedSel(t, sel);
-  }
+  for (const t of S.transactions) if (U.ymOf(t.date) === prev) v += signedSel(t, sel);
   return v;
 }
 function accountBalance(accId) {
