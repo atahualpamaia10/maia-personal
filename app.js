@@ -134,9 +134,6 @@ function parcLabel(t) {
 function renderHome() {
   const ym = ui.ym;
   const sel = selectedAccounts();
-  const carryOn = S.prefs.carry;
-  const carry = prevMonthResult(ym, sel);
-
   let entradas = 0, saidas = 0;
   for (const t of monthTxs(ym)) {
     if (t.type === 'income' && sel.has(t.account_id)) entradas += t.amount;
@@ -146,7 +143,7 @@ function renderHome() {
       if (sel.has(t.account_id)) saidas += t.amount;
     }
   }
-  const resultado = (carryOn ? carry : 0) + entradas - saidas;
+  const resultado = entradas - saidas;
 
   // despesas por categoria
   const byCat = new Map();
@@ -209,8 +206,6 @@ function renderHome() {
     ${accStripHTML(sel)}
 
     <div class="card sum">
-      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> incluir saldo do mês anterior</label>
-      ${carryOn ? `<div class="sum-line"><span>Saldo anterior</span><span class="num ${carry < 0 ? 'neg' : ''}">${brl(carry)}</span></div>` : ''}
       <div class="sum-line"><span>Entradas</span><span class="num pos">${brl(entradas)}</span></div>
       <div class="sum-line"><span>Saídas</span><span class="num neg">&minus;&nbsp;${brl(saidas)}</span></div>
       <div class="sum-total"><span>Resultado</span><span class="num ${resultado < 0 ? 'neg' : ''}">${brl(resultado)}</span></div>
@@ -248,7 +243,6 @@ function renderLedger() {
   const { name, year } = ymLabel(ym);
   const sel = selectedAccounts();
   const carry = prevMonthResult(ym, sel);
-  const carryOn = S.prefs.carry;
   const prev = ymLabel(U.addMonthsYM(ym, -1));
 
   const txs = monthTxs(ym).filter(t => touches(t, sel)).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
@@ -258,14 +252,13 @@ function renderLedger() {
     byDay.get(t.date).push(t);
   }
 
-  let running = carryOn ? carry : 0;
+  // saldo do dia = acumulado do mês, pra fechar exatamente no Resultado do mês
   let net = 0;
   let days = '';
   for (const [date, list] of byDay) {
     let rows = '';
     for (const t of list) {
       net += signedSel(t, sel);
-      running += signedSel(t, sel);
       rows += txRow(t, ym, sel);
     }
     days += `
@@ -273,7 +266,7 @@ function renderLedger() {
         <div class="day-head">${dmy(date)}, <span class="wd">${weekday(date)}</span></div>
         ${rows}
         <div class="day-close"><span class="l">SALDO DO DIA</span>
-          <span class="v num ${running < 0 ? 'neg' : ''}">${brl(running)}</span></div>
+          <span class="v num ${net < 0 ? 'neg' : ''}">${brl(net)}</span></div>
       </div>`;
   }
 
@@ -286,7 +279,6 @@ function renderLedger() {
         <div class="lbl">Saldo do mês anterior (${prev.name} de ${prev.year})</div>
         <div class="val num ${carry < 0 ? 'neg' : ''}">${brl(carry)}</div>
       </div>
-      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> incluir saldo do mês anterior</label>
     </div>
 
     <div class="card ledger">
@@ -673,10 +665,6 @@ $('#view').addEventListener('click', async e => {
     }
     return;
   }
-});
-
-$('#view').addEventListener('change', e => {
-  if (e.target.matches('[data-carry]')) { Store.setPref('carry', e.target.checked); render(); }
 });
 
 // modal
