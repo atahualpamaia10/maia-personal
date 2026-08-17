@@ -66,11 +66,17 @@ function signedSel(t, sel) {
 // a transação toca alguma conta selecionada?
 const touches = (t, sel) => sel.has(t.account_id) || (t.type === 'transfer' && sel.has(t.account_to));
 
-// o que vem do mês anterior: o resultado dele (receitas − despesas), não o acumulado da conta
+// o que vem do mês anterior: o Resultado do mês dele, do jeito que aparece na tela dele.
+// com o botão ligado esse resultado já trazia os meses de trás, então aqui vale o mesmo.
+// nunca entra o saldo inicial da conta.
 function prevMonthResult(ym, sel) {
   const prev = U.addMonthsYM(ym, -1);
+  const carryOn = S.prefs.carry;
   let v = 0;
-  for (const t of S.transactions) if (U.ymOf(t.date) === prev) v += signedSel(t, sel);
+  for (const t of S.transactions) {
+    const tym = U.ymOf(t.date);
+    if (carryOn ? tym < ym : tym === prev) v += signedSel(t, sel);
+  }
   return v;
 }
 function accountBalance(accId) {
@@ -134,6 +140,8 @@ function parcLabel(t) {
 function renderHome() {
   const ym = ui.ym;
   const sel = selectedAccounts();
+  const carryOn = S.prefs.carry;
+  const carry = prevMonthResult(ym, sel);
   let entradas = 0, saidas = 0;
   for (const t of monthTxs(ym)) {
     if (t.type === 'income' && sel.has(t.account_id)) entradas += t.amount;
@@ -143,7 +151,7 @@ function renderHome() {
       if (sel.has(t.account_id)) saidas += t.amount;
     }
   }
-  const resultado = entradas - saidas;
+  const resultado = (carryOn ? carry : 0) + entradas - saidas;
 
   // despesas por categoria
   const byCat = new Map();
@@ -206,6 +214,8 @@ function renderHome() {
     ${accStripHTML(sel)}
 
     <div class="card sum">
+      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> trazer o saldo do mês anterior</label>
+      ${carryOn ? `<div class="sum-line"><span>Saldo do mês anterior</span><span class="num ${carry < 0 ? 'neg' : ''}">${brl(carry)}</span></div>` : ''}
       <div class="sum-line"><span>Entradas</span><span class="num pos">${brl(entradas)}</span></div>
       <div class="sum-line"><span>Saídas</span><span class="num neg">&minus;&nbsp;${brl(saidas)}</span></div>
       <div class="sum-total"><span>Resultado</span><span class="num ${resultado < 0 ? 'neg' : ''}">${brl(resultado)}</span></div>
@@ -243,6 +253,7 @@ function renderLedger() {
   const { name, year } = ymLabel(ym);
   const sel = selectedAccounts();
   const carry = prevMonthResult(ym, sel);
+  const carryOn = S.prefs.carry;
   const prev = ymLabel(U.addMonthsYM(ym, -1));
 
   const txs = monthTxs(ym).filter(t => touches(t, sel)).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
@@ -252,13 +263,13 @@ function renderLedger() {
     byDay.get(t.date).push(t);
   }
 
-  // saldo do dia = acumulado do mês, pra fechar exatamente no Resultado do mês
-  let net = 0;
+  // saldo do dia parte do mesmo lugar que o Resultado do mês, pra fechar exatamente nele
+  let running = carryOn ? carry : 0;
   let days = '';
   for (const [date, list] of byDay) {
     let rows = '';
     for (const t of list) {
-      net += signedSel(t, sel);
+      running += signedSel(t, sel);
       rows += txRow(t, ym, sel);
     }
     days += `
@@ -266,9 +277,10 @@ function renderLedger() {
         <div class="day-head">${dmy(date)}, <span class="wd">${weekday(date)}</span></div>
         ${rows}
         <div class="day-close"><span class="l">SALDO DO DIA</span>
-          <span class="v num ${net < 0 ? 'neg' : ''}">${brl(net)}</span></div>
+          <span class="v num ${running < 0 ? 'neg' : ''}">${brl(running)}</span></div>
       </div>`;
   }
+  const monthResult = running;
 
   return `
     ${monthNavHTML()}
@@ -279,6 +291,7 @@ function renderLedger() {
         <div class="lbl">Saldo do mês anterior (${prev.name} de ${prev.year})</div>
         <div class="val num ${carry < 0 ? 'neg' : ''}">${brl(carry)}</div>
       </div>
+      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> trazer pro mês</label>
     </div>
 
     <div class="card ledger">
@@ -289,8 +302,8 @@ function renderLedger() {
     </div>
 
     <div class="card month-end">
-      <div class="row"><span class="l">Resultado do mês (receitas &minus; despesas)</span>
-        <span class="v num ${net < 0 ? 'neg' : ''}">${brl(net)}</span></div>
+      <div class="row"><span class="l">Resultado do mês ${carryOn ? `(com o saldo de ${prev.name})` : '(receitas &minus; despesas)'}</span>
+        <span class="v num ${monthResult < 0 ? 'neg' : ''}">${brl(monthResult)}</span></div>
     </div>`;
 }
 
@@ -678,6 +691,10 @@ txForm.addEventListener('change', async e => {
     else fillCategorySelect('');
   }
 });
+$('#view').addEventListener('change', e => {
+  if (e.target.matches('[data-carry]')) { Store.setPref('carry', e.target.checked); render(); }
+});
+
 txForm.addEventListener('submit', e => { e.preventDefault(); saveTx(); });
 $('#txDelete').addEventListener('click', deleteTx);
 $$('[data-close]').forEach(b => b.addEventListener('click', () => txModal.close()));
