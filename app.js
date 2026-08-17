@@ -277,7 +277,9 @@ function renderLedger() {
       </div>`;
   }
 
-  const monthResult = carryOn ? carry + net : net;
+  // saldo com que o mês fecha: sempre saldo anterior + movimento do mês (não depende do toggle)
+  const closing = carry + net;
+  const lastDay = `${ym}-${String(U.daysInMonth(ym)).padStart(2, '0')}`;
 
   return `
     ${monthNavHTML()}
@@ -300,7 +302,9 @@ function renderLedger() {
 
     <div class="card month-end">
       <div class="row"><span class="l">Resultado do mês (receitas &minus; despesas)</span>
-        <span class="v num ${monthResult < 0 ? 'neg' : ''}">${brl(monthResult)}</span></div>
+        <span class="v num ${net < 0 ? 'neg' : ''}">${brl(net)}</span></div>
+      <div class="row"><span class="l">Saldo no fim do mês (em ${dmy(lastDay)})</span>
+        <span class="v num ${closing < 0 ? 'neg' : ''}">${brl(closing)}</span></div>
     </div>`;
 }
 
