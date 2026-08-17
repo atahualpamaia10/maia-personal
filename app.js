@@ -66,11 +66,11 @@ function signedSel(t, sel) {
 // a transação toca alguma conta selecionada?
 const touches = (t, sel) => sel.has(t.account_id) || (t.type === 'transfer' && sel.has(t.account_to));
 
-// saldo acumulado (contas selecionadas) antes do mês ym
-function carryBefore(ym, sel) {
+// o que vem do mês anterior: o resultado dele (receitas − despesas), não o acumulado da conta
+function prevMonthResult(ym, sel) {
+  const prev = U.addMonthsYM(ym, -1);
   let v = 0;
-  for (const a of S.accounts) if (sel.has(a.id)) v += a.initial;
-  for (const t of S.transactions) if (U.ymOf(t.date) < ym) v += signedSel(t, sel);
+  for (const t of S.transactions) if (U.ymOf(t.date) === prev) v += signedSel(t, sel);
   return v;
 }
 function accountBalance(accId) {
@@ -135,7 +135,7 @@ function renderHome() {
   const ym = ui.ym;
   const sel = selectedAccounts();
   const carryOn = S.prefs.carry;
-  const carry = carryBefore(ym, sel);
+  const carry = prevMonthResult(ym, sel);
 
   let entradas = 0, saidas = 0;
   for (const t of monthTxs(ym)) {
@@ -209,7 +209,7 @@ function renderHome() {
     ${accStripHTML(sel)}
 
     <div class="card sum">
-      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> incluir saldo anterior</label>
+      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> incluir saldo do mês anterior</label>
       ${carryOn ? `<div class="sum-line"><span>Saldo anterior</span><span class="num ${carry < 0 ? 'neg' : ''}">${brl(carry)}</span></div>` : ''}
       <div class="sum-line"><span>Entradas</span><span class="num pos">${brl(entradas)}</span></div>
       <div class="sum-line"><span>Saídas</span><span class="num neg">&minus;&nbsp;${brl(saidas)}</span></div>
@@ -247,9 +247,9 @@ function renderLedger() {
   const ym = ui.ym;
   const { name, year } = ymLabel(ym);
   const sel = selectedAccounts();
-  const carry = carryBefore(ym, sel);
+  const carry = prevMonthResult(ym, sel);
   const carryOn = S.prefs.carry;
-  const prevLast = `${U.addMonthsYM(ym, -1)}-${String(U.daysInMonth(U.addMonthsYM(ym, -1))).padStart(2, '0')}`;
+  const prev = ymLabel(U.addMonthsYM(ym, -1));
 
   const txs = monthTxs(ym).filter(t => touches(t, sel)).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   const byDay = new Map();
@@ -283,10 +283,10 @@ function renderLedger() {
 
     <div class="card carry">
       <div>
-        <div class="lbl">Saldo do mês anterior (em ${dmy(prevLast)})</div>
+        <div class="lbl">Saldo do mês anterior (${prev.name} de ${prev.year})</div>
         <div class="val num ${carry < 0 ? 'neg' : ''}">${brl(carry)}</div>
       </div>
-      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> incluir no saldo do dia</label>
+      <label class="switch"><input type="checkbox" data-carry ${carryOn ? 'checked' : ''}> incluir saldo do mês anterior</label>
     </div>
 
     <div class="card ledger">
