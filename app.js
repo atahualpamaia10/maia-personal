@@ -66,12 +66,11 @@ function signedSel(t, sel) {
 // a transação toca alguma conta selecionada?
 const touches = (t, sel) => sel.has(t.account_id) || (t.type === 'transfer' && sel.has(t.account_to));
 
-// o que vem do mês anterior: receitas menos despesas SÓ do mês imediatamente anterior.
-// nunca encadeia meses de trás, nunca entra o saldo inicial da conta.
-function prevMonthResult(ym, sel) {
-  const prev = U.addMonthsYM(ym, -1);
+// o que vem do mês anterior: o saldo do último dia do mês anterior, venha de onde vier.
+// = tudo que entrou e saiu antes deste mês. Nunca entra o saldo inicial da conta.
+function prevMonthClose(ym, sel) {
   let v = 0;
-  for (const t of S.transactions) if (U.ymOf(t.date) === prev) v += signedSel(t, sel);
+  for (const t of S.transactions) if (U.ymOf(t.date) < ym) v += signedSel(t, sel);
   return v;
 }
 function accountBalance(accId) {
@@ -136,7 +135,7 @@ function renderHome() {
   const ym = ui.ym;
   const sel = selectedAccounts();
   const carryOn = S.prefs.carry;
-  const carry = prevMonthResult(ym, sel);
+  const carry = prevMonthClose(ym, sel);
   let entradas = 0, saidas = 0;
   for (const t of monthTxs(ym)) {
     if (t.type === 'income' && sel.has(t.account_id)) entradas += t.amount;
@@ -247,7 +246,7 @@ function renderLedger() {
   const ym = ui.ym;
   const { name, year } = ymLabel(ym);
   const sel = selectedAccounts();
-  const carry = prevMonthResult(ym, sel);
+  const carry = prevMonthClose(ym, sel);
   const carryOn = S.prefs.carry;
   const prev = ymLabel(U.addMonthsYM(ym, -1));
 
