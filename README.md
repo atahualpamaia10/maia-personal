@@ -44,8 +44,8 @@ App de finanças pessoais do Maia, estilo Minhas Economias. HTML/JS estático, s
 - **Mês anterior ao atual = somente leitura.**
 - **Consolidada**: linha marcada (duplo-check) fica com fundo sombreado.
 - **Saldo atual da conta** (chip do seletor) = saldo inicial + transações com data ≤ hoje. É o único lugar onde o saldo inicial entra.
-- **Saldo do mês anterior** = o saldo do último dia do mês anterior, venha de onde vier (na prática, tudo que entrou e saiu antes deste mês). Nunca inclui o saldo inicial da conta. Não muda com o toggle.
-- **Resultado do mês** = entradas − saídas do mês; com o toggle "trazer o saldo do mês anterior" ligado, soma o saldo do mês anterior. O rótulo do card muda pra "(com o saldo de \<mês\>)" quando o toggle está ligado.
+- **Saldo do mês anterior** = entradas − saídas **só do mês imediatamente anterior**. Nunca encadeia meses de trás e nunca inclui o saldo inicial da conta. Não muda com o toggle.
+- **Resultado do mês** = entradas − saídas do mês; com o toggle "trazer o saldo do mês anterior" ligado, soma o saldo do mês anterior (um mês, nunca mais). O rótulo do card muda pra "(com o saldo de \<mês\>)" quando o toggle está ligado.
 - **Saldo do dia** parte do mesmo ponto que o Resultado do mês (zero, ou o saldo do mês anterior se o toggle estiver ligado), então o último dia do mês fecha exatamente no Resultado do mês. Início e Transações mostram sempre o mesmo número.
 - O toggle é uma pref por usuário (`carry`) e vale nas duas abas.
 - Deep-link de mês via hash: `#2026-10`.
