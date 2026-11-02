@@ -74,6 +74,13 @@ function prevMonthResult(ym, sel) {
   for (const t of S.transactions) if (U.ymOf(t.date) === prev) v += signedSel(t, sel);
   return v;
 }
+// a partir de novembro/2026 o mês abre com o fechamento do mês anterior (o "Resultado do mês"
+// com o saldo trazido). Até outubro fica como estava.
+const CARRY_CHAIN_FROM = '2026-11';
+function prevMonthClose(ym, sel) {
+  if (ym < CARRY_CHAIN_FROM) return prevMonthResult(ym, sel);
+  return prevMonthClose(U.addMonthsYM(ym, -1), sel) + prevMonthResult(ym, sel);
+}
 function accountBalance(accId) {
   const today = U.todayStr();
   let v = accById(accId).initial;
@@ -136,7 +143,7 @@ function renderHome() {
   const ym = ui.ym;
   const sel = selectedAccounts();
   const carryOn = S.prefs.carry;
-  const carry = prevMonthResult(ym, sel);
+  const carry = prevMonthClose(ym, sel);
   let entradas = 0, saidas = 0;
   for (const t of monthTxs(ym)) {
     if (t.type === 'income' && sel.has(t.account_id)) entradas += t.amount;
@@ -247,7 +254,7 @@ function renderLedger() {
   const ym = ui.ym;
   const { name, year } = ymLabel(ym);
   const sel = selectedAccounts();
-  const carry = prevMonthResult(ym, sel);
+  const carry = prevMonthClose(ym, sel);
   const carryOn = S.prefs.carry;
   const prev = ymLabel(U.addMonthsYM(ym, -1));
 
