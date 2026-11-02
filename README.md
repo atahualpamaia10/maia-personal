@@ -65,6 +65,16 @@ git add -A && git commit -m "..." && git push
 ```
 Se mudar CSS/JS, subir a versão do cache no `sw.js` (`CACHE = 'maiaeconomias-vN'`) ajuda a forçar a troca.
 
+O repo é da conta `atahualpamaia10`, mas o git desta máquina pode empurrar com a conta `atahualpa-maia` (erro 403). Nesse caso:
+```
+gh auth switch --user atahualpamaia10
+git -c credential.helper= -c "credential.helper=!gh auth git-credential" push
+gh auth switch --user atahualpa-maia
+```
+
+### Ajuste direto no banco
+Mês anterior ao atual é somente leitura no app. Pra corrigir lançamento antigo, usar a secret key do `.env` (passa por cima da RLS) na API REST do Supabase (`/rest/v1/transactions`), ou colar SQL no SQL Editor. Guardar cópia das linhas antes de apagar.
+
 ### Supabase
 - Painel → SQL Editor pra rodar/alterar schema (`schema.sql`).
 - Painel → Authentication → Users pra o usuário do login.
@@ -75,6 +85,6 @@ Abrir a URL no Safari/Chrome → compartilhar/menu → "Adicionar à Tela de In�
 
 ## Pendências / notas
 
-- No `.env`, a linha `SUPABASE_SECRET_KEY` ainda está com a publishable duplicada. Só é usada em tarefa administrativa local; corrigir pra `sb_secret_...` quando precisar.
-- Seleção de contas não persiste entre reloads (volta pra todas). Fácil de guardar depois, se quiser.
+- Out/2026 fechado em 81,90 (valor real do Maia): a psico de 26/10 (180,00, ele não foi) saiu e entrou "AJUSTE FIM DE MES" em 31/10, despesa de 350,46 consolidada, sem categoria, na Santander. Nov/2026 abre com 81,90.
+- Seleção de contas não persiste entre reloads (volta só pra conta principal). Fácil de guardar depois, se quiser.
 - Autofill de senha no iOS: salvar primeiro via Safari (navegador); o app instalado passa a sugerir do Keychain.
